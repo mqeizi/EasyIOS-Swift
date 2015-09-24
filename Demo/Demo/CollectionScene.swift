@@ -21,7 +21,7 @@ class CollectionScene: EUScene,UICollectionViewDelegate {
         self.showBarButton(.LEFT, title: "返回", fontColor: UIColor.greenColor())
         self.sceneModel.req.requestNeedActive.value = true
         
-        self.sceneModel.req.state *->> Bond<RequestState>(){
+        self.sceneModel.req.state.observe{
             switch $0 {
             case .Sending :
                 SVProgressHUD.show()
@@ -34,7 +34,6 @@ class CollectionScene: EUScene,UICollectionViewDelegate {
                 return
             }
         }
-        
         // Do any additional setup after loading the view.
     }
 
@@ -42,31 +41,29 @@ class CollectionScene: EUScene,UICollectionViewDelegate {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-    
-    //接收xml里的下拉刷新事件
-    func handlePullRefresh (collectionView:UICollectionView){
-        self.sceneModel.req.requestNeedActive.value = true
-    }
-    
-    //接收xml里的上拉加载事件
-    func handleInfinite (collectionView:UICollectionView){
-        let delayTime = dispatch_time(DISPATCH_TIME_NOW,
-            Int64(3.0 * Double(NSEC_PER_SEC)))
-        dispatch_after(delayTime, dispatch_get_main_queue()) {
-            collectionView.infiniteScrollingView?.stopAnimating()
-            collectionView.infiniteScrollingView?.setEnded()
-        }
-    }
+
     
     override func eu_collectionViewDidLoad(collectionView: UICollectionView?) {
         self.collectionView = collectionView
         collectionView?.delegate = self
-        self.sceneModel.viewModelList.map { (data:CollectionCellViewModel,index:Int) -> UICollectionViewCell in
-            return collectionView!.dequeueReusableCell(
-                "cell",
-                forIndexPath:NSIndexPath(forItem: index, inSection: 0),
-                target: self,bind:data) as UICollectionViewCell
-            } ->> self.eu_collectionViewDataSource!
+        
+        
+        define("handlePullRefresh"){
+            self.sceneModel.req.requestNeedActive.value = true
+        }
+        
+        define("handleInfinite"){
+            let delayTime = dispatch_time(DISPATCH_TIME_NOW,
+                Int64(3.0 * Double(NSEC_PER_SEC)))
+            dispatch_after(delayTime, dispatch_get_main_queue()) {
+                self.collectionView?.infiniteScrollingView?.stopAnimating()
+                self.collectionView?.infiniteScrollingView?.setEnded()
+            }
+        }
+        
+        self.sceneModel.viewModelList.lift().bindTo(collectionView!) { (indexPath, dataArray, collectionView) -> UICollectionViewCell in
+            collectionView.dequeueReusableCell("cell", forIndexPath: indexPath, target: self, bind: dataArray[indexPath.section][indexPath.row])
+        }
     }
 
     override func leftButtonTouch() {

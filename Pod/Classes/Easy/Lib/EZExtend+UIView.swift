@@ -7,7 +7,7 @@
 //
 
 import UIKit
-
+import Bond
 // MARK: - UIView
 
 let UIViewAnimationDuration: NSTimeInterval = 1
@@ -181,7 +181,7 @@ extension UIView {
     // MARK: Anchor Extensions
     
     public func setAnchorPosition (anchorPosition: AnchorPosition) {
-        println(anchorPosition.rawValue)
+        print(anchorPosition.rawValue)
         self.layer.anchorPoint = anchorPosition.rawValue
     }
     
@@ -305,5 +305,19 @@ extension UIView {
         action: Selector) {
             let pan = UIPanGestureRecognizer (target: target, action: action)
             self.addGestureRecognizer(pan)
+    }
+    
+    public func whenTap(number:NSInteger = 1,block:()->Void){
+        self.userInteractionEnabled = true
+        bnd_tapGestureEvent(number).observe { (_) -> () in
+            block()
+        }
+    }
+    
+    public func whenSwipe(number:NSInteger = 1,direction:UISwipeGestureRecognizerDirection,block:()->Void){
+        self.userInteractionEnabled = true
+        bnd_swipeGestureEvent(number).observe { (_) -> () in
+            block()
+        }
     }
 }

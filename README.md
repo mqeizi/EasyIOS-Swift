@@ -1,7 +1,7 @@
 
 ![image](https://raw.githubusercontent.com/zhuchaowe/EasyIOS/gh-pages/images/logo.png)
 
-EasyIOS For Swift
+EasyIOS For Swift 2.0
 =======
 
 [![Version](https://img.shields.io/cocoapods/v/EasyIOS-Swift.svg?style=flat)](http://cocoapods.org/pods/EasyIOS-Swift)
@@ -13,9 +13,9 @@ EasyIOS For Swift
 * [On Github](https://github.com/EasyIOS/EasyIOS-Swift)
 * [On OSChina](http://git.oschina.net/zhuchaowe/EasyIOS-Swift)
 * [中文README](/README/Chinese.md)
-* [IOSX - EasyIOS Official Forum](http://www.iosx.me)
+* [IOSX - EasyIOS Official Forum](https://www.iosx.me)
 * [EasyIOS-ObjC](https://github.com/EasyIOS/EasyIOS)
-* The document will come as soon as possible！
+* [EasyIOS-Swift-Doc](http://swift.easyios.iosx.me)
 
 ## DEMO Video
 [![ScreenShot](http://g3.tdimg.com/0d239f40817111df0dfe941cbc6f9d5e/b0_2.jpg)](http://www.tudou.com/v/aWwPwUhdt5E/&rpid=6059352&resourceId=6059352_04_05_99/v.swf)
@@ -24,6 +24,7 @@ EasyIOS For Swift
 
 * MVVM : `Model-View-ViewModel` inspired by [Functional Reactive Programming](http://en.wikipedia.org/wiki/Functional_reactive_programming) 
 * HTML To Native : Transform HTML&CSS to Native Control,
+* JavaScript and Native Bridge: We can declare the js function in native and call the js function in html
 * DataBinding : We can use the SwiftBond to Bind the data via swift,and use the EZViewModel to Bind the data via html.example `{{title}}`
 * Reflect Cocoa Touch : Reflect all the Cocoa Touch Api ,we can use the Cocoa Touch Api via HTML 
 * AutoLayout : The HTML layout based on the `AutoLayout`
@@ -42,12 +43,13 @@ EasyIOS For Swift
 
 ```HTML
 <body>
-    <div id="tableview" align="64 0 0 0" content-inset="{0,0,0,0}" type="UITableView"  estimated-row-height="100"  separator-style="None" pull-to-refresh="handlePullRefresh." infinite-scrolling="handleInfinite. PullFooter">
-        <div align="0 0 0 0" type="cell" id="cell" >
+    <div id="tableview" align="64 0 0 0" content-inset="{0,0,0,0}" type="UITableView"  estimated-row-height="100"  separator-style="None" pull-to-refresh="handlePullRefresh()" infinite-scrolling="handleInfinite() PullFooter">
+        <div align="0 0 0 0" type="cell" id="cell" ontap-bind="um.push('{{link}}',true)" >
             <img id="avatar" align="10 10 -10 *" clips-to-bounds="YES" width="45" height="45" layer_corner-radius="5" src="{{srcUrl}}" />
             <span align="top:2 avatar;right:-10" margin="left:12 avatar"  font="15 system" id="title">{{title}}</span>
             <span align="bottom:0 avatar;right:-10" margin="left:12 avatar" font="13 system" text-color="#ACACAC" id="subTitle" style="color:#ACACAC;" link-style="color:green;" >{{subTitle}}</span>
         </div>
+        
         <div type="section" id="bgView" background-color="#F2F1F6" >
             <span align="left:15;center-y:0" font="14 system">{{title}}</span>
         </div>
@@ -55,32 +57,53 @@ EasyIOS For Swift
 </body>
 ```
 
-* UIScrollView With CSS
+* UIScrollView With CSS and JS
     * Use the CSS by `@` for example `@contentAlign`.
    
 ```HTML
 <style>
     .contentAlign{
-    edge:0 0 0 0;left:0 root;right:0 root;
+        edge:0 0 0 0;
+    left:0 root;
+        right:0 root;
     }
     .inputStyle{
-    font-size:15;color:#999999;
+        font-size:15;color:#999999;
     }
 </style>
 <body>
     <div align="0 0 0 0" type="UIScrollView" background-color="#F3F3F3">
         <div align="@contentAlign">
-            <img id="logo" image="login-logo" user-interaction-enabled="YES" present="demo://login" align="center-x:0;top:110;"/>
+            <img id="logo" image="login-logo" user-interaction-enabled="YES" ontap="tap()" align="center-x:0;top:110;"/>
             <div id="username" layer_corner-radius="8" background-color="white" align="* 15 * -15" margin="top:30 logo" height="45">
                 <input class="userTextField" id="userTextField" align="edge:10 10 -10 -10;" placeholder-style="@inputStyle" keyboard-type="EmailAddress" style="@inputStyle" placeholder="上面的logo可以被点击"/>
             </div>
             <div id="password" layer_corner-radius="8" background-color="white" align="* 15 * -15" margin="top:13 username" height="45">
                 <input id="passwordTextField" secure-text-entry="YES" align="10 10 -10 -10" placeholder="密码" placeholder-style="@inputStyle" style="@inputStyle" />
             </div>
-            <button id="submit" style="color:white;font-size:20;" background-color="#3FBCFB" align="* 15 -10 -15" margin="top:25 password" height="45" layer_corner-radius="8" onEvent="touch-up-inside:login">登陆</button>
+            <button id="submit" style="color:white;font-size:20;" background-color="#3FBCFB" align="* 15 -10 -15" margin="top:25 password" height="45" layer_corner-radius="8" onEvent="touch-up-inside:login()">Login</button>
         </div>
     </div>
 </body>
+
+<script>
+    function tap(){
+        um.present('demo://login',true);
+    };
+    
+    function login(){
+        var password = document.getElementById("passwordTextField");
+        password.attrs({
+            placeholder:"hello",
+            secureTextEntry:"NO"
+        });
+        
+<!--        var logo = document.getElementById("logo")-->
+<!--        password.callWithObject("test:",logo);-->
+
+        console.log(password.val("text"));
+    }
+</script>
 ```
 
 * HTML Label and reusable html
@@ -107,12 +130,11 @@ EasyIOS For Swift
 </body>
 ```
 
-
 * UICollectionView with FlowLayout
 
 ```HTML
 <body>
-    <div id="collectionView" align="0 0 0 0" type="UICollectionView" flow-layout="scroll-direction:Vertical;item-size:{300,50};section-inset:{3,3,0,3};minimum-interitem-spacing:3;minimum-line-spacing:3" content-inset="{64,0,0,0}" background-color="white" pull-to-refresh="handlePullRefresh." infinite-scrolling="handleInfinite.">
+    <div id="collectionView" align="0 0 0 0" type="UICollectionView" flow-layout="scroll-direction:Vertical;item-size:{300,50};section-inset:{3,3,0,3};minimum-interitem-spacing:3;minimum-line-spacing:3" content-inset="{64,0,0,0}" background-color="white" pull-to-refresh="handlePullRefresh()" infinite-scrolling="handleInfinite()">
         <div align="0 0 0 0" type="cell"  id="cell"  background-color="red">
             <span align="10 10 -10 -10" font="10 system">{{name}}</span>
         </div>
@@ -120,12 +142,27 @@ EasyIOS For Swift
 </body>
 ```
 
+## Declare JS funciton By Swfit
+
+```swift
+        //定义一个可以给JS调用的下拉刷新回调方法handlePullRefresh()
+        define("handlePullRefresh"){
+            let delayTime = dispatch_time(DISPATCH_TIME_NOW,
+                Int64(3.0 * Double(NSEC_PER_SEC)))
+            dispatch_after(delayTime, dispatch_get_main_queue()) {
+                tableView?.pullToRefreshView?.stopAnimating()
+            }
+        }
+```
 
 ## MVVM
 
 The MVVM based on the Swift binding framework [SwiftBond](https://github.com/SwiftBond/Bond)
 
 Bond is a Swift binding framework that takes binding concept to a whole new level - boils it down to just one operator. It's simple, powerful, type-safe and multi-paradigm - just like Swift.
+
+
+## [EasyCoreData](https://github.com/EasyIOS/EasyCoreData)(1.0.1)
 
 
 ## Usage
@@ -145,7 +182,7 @@ it, simply add the following line to your Podfile:
 ```ruby
 platform :ios, '8.0'
 use_frameworks!
-pod "EasyIOS-Swift"
+pod "EasyIOS-Swift" :git => 'https://github.com/EasyIOS/EasyIOS-Swift'
 ```
 
 import the EasyIOS

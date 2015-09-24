@@ -8,20 +8,23 @@
 
 import Foundation
 import TTTAttributedLabel
+import JavaScriptCore
+
+
 
 class LabelProperty:ViewProperty{
     var linkStyle = Dictionary<NSObject,AnyObject>()
     var activeLinkStyle = Dictionary<NSObject,AnyObject>()
     
     override func view() -> UIView{
-        if isEmpty(self.style) {
-            var view = UILabel()
+        if self.style.characters.isEmpty {
+            let view = UILabel()
             view.tagProperty = self
             view.text = self.contentText
             self.renderViewStyle(view)
             return view
         }else{
-            var view = TTTAttributedLabel()
+            let view = TTTAttributedLabel(frame: CGRectZero)
             view.tagProperty = self
             if self.linkStyle.count > 0 {
                 view.linkAttributes = self.linkStyle
@@ -54,7 +57,7 @@ class LabelProperty:ViewProperty{
             html += child.html().trim
         }
         var bindKey = "text"
-        if !isEmpty(self.style) {
+        if !self.style.characters.isEmpty {
             bindKey = "TTText"
         }
         if let newHtml = self.bindTheKeyPath(html, key: bindKey) {
@@ -68,7 +71,7 @@ class LabelProperty:ViewProperty{
     }
     
     func formatLink(linkStyle:String) -> [NSObject:AnyObject]{
-        var linkArray = linkStyle.trimArrayBy(";")
+        let linkArray = linkStyle.trimArrayBy(";")
         var dict = Dictionary<NSObject,AnyObject>()
         for str in linkArray {
             var strArray = str.trimArrayBy(":")

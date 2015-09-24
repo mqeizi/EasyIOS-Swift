@@ -29,8 +29,11 @@ public enum INSET : Int{
 }
 
 public class EZScene: UIViewController {
-    public var parentScene:EZScene?
+    
+    //parentScene 保留设计，必要的时候保存parentScene
+    public weak var parentScene:EZScene?
 
+    //导航条左右按钮设置 NAV是一个枚举值：.LEFT,.RIGHT
     public func showBarButton(position:NAV,title:String,fontColor:UIColor){
         self.showBarButton(position, button: UIButton(navTitle: title, color: fontColor))
     }
@@ -44,7 +47,7 @@ public class EZScene: UIViewController {
             button?.addTarget(self, action: Selector("leftButtonTouch"), forControlEvents: UIControlEvents.TouchUpInside)
             self.navigationItem.leftBarButtonItem = nil
             self.navigationItem.leftBarButtonItem = UIBarButtonItem(customView: button!)
-            self.navigationController?.interactivePopGestureRecognizer.delegate = nil
+            self.navigationController?.interactivePopGestureRecognizer?.delegate = nil
         }else if position == .RIGHT {
             button?.addTarget(self, action: Selector("rightButtonTouch"), forControlEvents: UIControlEvents.TouchUpInside)
             self.navigationItem.rightBarButtonItem = nil
@@ -72,16 +75,17 @@ public class EZScene: UIViewController {
         self.extendedLayoutIncludesOpaqueBars = true
         self.edgesForExtendedLayout = UIRectEdge.All
         view.snp_makeConstraints { (make) -> Void in
-            make.edges.equalTo(view.superview!).insets(
-                EdgeInsetsMake((extend == .TOP||extend == .TOP_BOTTOM) ? 64:0, 0,(extend == .BOTTOM||extend == .TOP_BOTTOM) ? 49:0, 0)
-            )
+            //TODO
+//            make.edges.equalTo(view.superview!).inset(
+//                EdgeInsetsMake((extend == EXTEND.TOP||extend == EXTEND.TOP_BOTTOM) ? 64:0, left:0,bottom:(extend == EXTEND.BOTTOM||extend == EXTEND.TOP_BOTTOM) ? 49:0, right: 0)
+//            )
         }
     }
 
     public func addScrollView(view:UIScrollView,extend:EXTEND,inset:INSET){
         self.addSubView(view, extend: extend)
-        view.contentInset = UIEdgeInsetsMake((inset == .TOP || inset == .TOP_BOTTOM) ? 64:0, 0,
-            (inset == .BOTTOM || inset == .TOP_BOTTOM) ? 49:0, 0)
+//        view.contentInset = UIEdgeInsetsMake((inset == INSET.TOP || inset == INSET.TOP_BOTTOM) ? 64:0, 0,
+//            (inset == INSET.BOTTOM || inset == INSET.TOP_BOTTOM) ? 49:0, 0)
     }
     
     

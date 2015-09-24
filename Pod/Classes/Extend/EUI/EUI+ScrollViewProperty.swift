@@ -18,7 +18,7 @@ class ScrollViewProperty:ViewProperty{
     var infiniteScrolling:InfiniteScrollingAction?
     
     override func view() -> UIScrollView{
-        var view = UIScrollView()
+        let view = UIScrollView()
         view.tagProperty = self
 
         self.renderViewStyle(view)
@@ -31,7 +31,7 @@ class ScrollViewProperty:ViewProperty{
 
     override func renderViewStyle(view: UIView) {
         super.renderViewStyle(view)
-        var sview = view as! UIScrollView
+        let sview = view as! UIScrollView
         sview.contentInset = self.contentInset
         sview.contentOffset =  self.contentOffset
         sview.contentSize = self.contentSize
@@ -69,8 +69,6 @@ class ScrollViewProperty:ViewProperty{
                 self.pullToRefresh = PullRefreshAction(selector: values[0])
             }else if values.count == 2 {
                 self.pullToRefresh = PullRefreshAction(selector: values[0], viewClass: values[1])
-            }else if values.count >= 3 {
-                self.pullToRefresh = PullRefreshAction(selector: values[0], viewClass: values[1], target: values[2])
             }
         }
         
@@ -80,8 +78,6 @@ class ScrollViewProperty:ViewProperty{
                 self.infiniteScrolling = InfiniteScrollingAction(selector: values[0])
             }else if values.count == 2 {
                 self.infiniteScrolling = InfiniteScrollingAction(selector: values[0], viewClass: values[1])
-            }else if values.count >= 3 {
-                self.infiniteScrolling = InfiniteScrollingAction(selector: values[0], viewClass: values[1], target: values[2])
             }
         }
         

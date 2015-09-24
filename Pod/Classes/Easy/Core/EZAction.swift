@@ -10,36 +10,37 @@ import UIKit
 import Alamofire
 import Haneke
 import Bond
+import ReachabilitySwift
 
 public var HOST_URL = "" //服务端域名:端口
-public var CLIENT = ""  //自定义客户端识别
 public var CODE_KEY = "" //错误码key,暂不支持路径 如 code
 public var RIGHT_CODE = 0  //正确校验码
 public var MSG_KEY = "" //消息提示msg,暂不支持路径 如 msg
 
 
 private var networkReachabilityHandle: UInt8 = 2;
+
 public class EZAction: NSObject {
     
     //使用缓存策略 仅首次读取缓存
-    public class func SEND_IQ_CACHE (left:EZRequest) {
-        left.useCache = true
-        left.dataFromCache = left.isFirstRequest
-        EZAction.Send(left)
+    public class func SEND_IQ_CACHE (req:EZRequest) {
+        req.useCache = true
+        req.dataFromCache = req.isFirstRequest
+        self.Send(req)
     }
     
     //使用缓存策略 优先从缓存读取
-    public class func SEND_CACHE (left:EZRequest) {
-        left.useCache = true
-        left.dataFromCache = true
-        self.Send(left)
+    public class func SEND_CACHE (req:EZRequest) {
+        req.useCache = true
+        req.dataFromCache = true
+        self.Send(req)
     }
     
     //不使用缓存策略
-    public class func SEND (left:EZRequest) {
-        left.useCache = false
-        left.dataFromCache = false
-        EZAction.Send(left)
+    public class func SEND (req:EZRequest) {
+        req.useCache = false
+        req.dataFromCache = false
+        self.Send(req)
     }
     
     
@@ -47,44 +48,47 @@ public class EZAction: NSObject {
         var url = ""
         var requestParams = Dictionary<String,AnyObject>()
         
-        if !isEmpty(req.staticPath) {
+        if !req.staticPath.characters.isEmpty {
             url = req.staticPath
         }else{
-            if isEmpty(req.scheme) {
+            if req.scheme.characters.isEmpty {
                 req.scheme = "http"
             }
-            if isEmpty(req.host) {
+            if req.host.characters.isEmpty {
                 req.host = HOST_URL
             }
             url = req.scheme + "://" + req.host + req.path
-            if  isEmpty(req.appendPathInfo) {
+            if  req.appendPathInfo.characters.isEmpty {
                 requestParams = req.requestParams
             }else{
                 url = url + req.appendPathInfo
             }
         }
-        req.state.value = .Sending
-        req.op = Alamofire.request(req.method, url, parameters: requestParams, encoding: req.parameterEncoding)
+        req.state.value = RequestState.Sending
+        
+        req.op = req.manager
+            .request(req.method, url, parameters: requestParams, encoding: req.parameterEncoding)
             .validate(statusCode: 200..<300)
             .validate(contentType: req.acceptableContentTypes)
-            .responseString { (_, _, string, _) in
+            .responseString { (_, _, string) in
                 req.responseString = string
-            }.responseJSON { (_, _, json, error)  in
-                if json == nil{
-                    req.error = error
+            }.responseJSON { (_, _, json)  in
+                if json.isFailure{
+                    req.error = json.error
                     self.failed(req)
                 }else{
-                    req.output = json as! Dictionary<String, AnyObject>
+                    req.output = json.value as! Dictionary<String, AnyObject>
                     self.checkCode(req)
                 }
             }
-        req.url = req.op?.request.URL
+        req.url = req.op?.request!.URL
         self.getCacheJson(req)
     }
     
     public class func Upload (req :EZRequest){
-        req.state.value = .Sending
-        req.op = Alamofire.upload(.POST, req.downloadUrl, req.uploadData!)
+        req.state.value = RequestState.Sending
+        req.op = req.manager
+            .upload(.POST, req.uploadUrl, data: req.uploadData!)
             .validate(statusCode: 200..<300)
             .validate(contentType: req.acceptableContentTypes)
             .progress { (bytesWritten, totalBytesWritten, totalBytesExpectedToWrite) in
@@ -92,31 +96,27 @@ public class EZAction: NSObject {
                 req.totalBytesExpectedToWrite = Double(totalBytesExpectedToWrite)
                 req.progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
             }
-            .responseString { (_, _, string, _) in
-                req.responseString = string!
-            }.responseJSON { (_, _, json, error) in
-                if error != nil{
-                    req.error = error
+            .responseString { (_, _, string) in
+                req.responseString = string
+            }.responseJSON { (_, _, json) in
+                if json.isFailure{
+                    req.error = json.error
                     self.failed(req)
                 }else{
-                    req.output = json as! Dictionary<String, AnyObject>
+                    req.output = json.value as! Dictionary<String, AnyObject>
                     self.checkCode(req)
                 }
             }
-        req.url = req.op?.request.URL
+        req.url = req.op?.request!.URL
     }
     
     public class func Download (req :EZRequest){
-        req.state.value = .Sending
-        let destination = Alamofire.Request.suggestedDownloadDestination(directory: .DocumentDirectory, domain: .UserDomainMask)
-
-        req.op = Alamofire.download(.GET, req.downloadUrl, { (temporaryURL, response) in
-            if let directoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory,
+        req.state.value = RequestState.Sending
+        req.op = req.manager
+            .download(.GET, req.downloadUrl, destination: { (temporaryURL, response) in
+            let directoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory,
                     inDomains: .UserDomainMask)[0]
-                as? NSURL {
-                    return directoryURL.URLByAppendingPathComponent(req.targetPath + response.suggestedFilename!)
-            }
-            return temporaryURL
+            return directoryURL.URLByAppendingPathComponent(req.targetPath + response.suggestedFilename!)
         })
             .validate(statusCode: 200..<300)
             .progress { (bytesRead, totalBytesRead, totalBytesExpectedToRead) in
@@ -129,11 +129,10 @@ public class EZAction: NSObject {
                     req.error = error
                     self.failed(req)
                 }else{
-                    req.responseString = "\(response)"
-                    req.state.value = .Success
+                    req.state.value = RequestState.Success
                 }
             }
-        req.url = req.op?.request.URL
+        req.url = req.op?.request!.URL
     }
     
     private class func cacheJson (req: EZRequest) {
@@ -165,11 +164,11 @@ public class EZAction: NSObject {
             req.codeKey = req.output[CODE_KEY] as? Int
             if req.codeKey == RIGHT_CODE {
                 req.message = req.output[MSG_KEY] as? String
-                req.state.value = .SuccessFromCache
+                req.state.value = RequestState.SuccessFromCache
                 EZPrintln("Fetch  Success from Cache by key: \(req.cacheKey)")
             }else{
                 req.message = req.output[MSG_KEY] as? String
-                req.state.value = .ErrorFromCache
+                req.state.value = RequestState.ErrorFromCache
                 EZPrintln(req.message)
             }
         }
@@ -185,7 +184,7 @@ public class EZAction: NSObject {
                 self.error(req)
             }
         }else{
-            req.state.value = .Success
+            req.state.value = RequestState.Success
             self.cacheJson(req)
         }
     }
@@ -194,22 +193,22 @@ public class EZAction: NSObject {
     private class func success (req: EZRequest) {
         req.isFirstRequest = false
         req.message = req.output[MSG_KEY] as? String
-        if isEmpty(req.output) {
-            req.state.value = .Error
+        if req.output.isEmpty {
+            req.state.value = RequestState.Error
         }else{
-            req.state.value = .Success
+            req.state.value = RequestState.Success
         }
     }
     
     private class func failed (req: EZRequest) {
-        req.message = req.error?.userInfo?["NSLocalizedDescription"] as? String
-        req.state.value = .Failed
+        req.message = req.error.debugDescription
+        req.state.value = RequestState.Failed
         EZPrintln(req.message)
     }
     
     private class func error (req: EZRequest) {
         req.message = req.output[MSG_KEY] as? String
-        req.state.value = .Error
+        req.state.value = RequestState.Error
         EZPrintln(req.message)
     }
     
@@ -227,23 +226,30 @@ public class EZAction: NSObject {
         }
     }
     */
-    public class var networkReachability: InternalDynamic<NetworkStatus> {
+    
+    public class var networkReachability: Observable<Reachability.NetworkStatus>? {
         if let d: AnyObject = objc_getAssociatedObject(self, &networkReachabilityHandle) {
-            return (d as? InternalDynamic<NetworkStatus>)!
-        } else {
-            let reachability = Reachability.reachabilityForInternetConnection()
-            let d = InternalDynamic<NetworkStatus>(reachability.currentReachabilityStatus)
+            return d as? Observable<Reachability.NetworkStatus>
+        } else if let reachability = Reachability.reachabilityForInternetConnection() {
+            let d = Observable<Reachability.NetworkStatus>(reachability.currentReachabilityStatus)
             reachability.whenReachable = { reachability in
-                d.value = reachability.currentReachabilityStatus
+                dispatch_async(dispatch_get_main_queue()) {
+                    d.value = reachability.currentReachabilityStatus
+                }
             }
             reachability.whenUnreachable = { reachability in
-                d.value = reachability.currentReachabilityStatus
+                dispatch_async(dispatch_get_main_queue()) {
+                    d.value = reachability.currentReachabilityStatus
+                }
             }
             reachability.startNotifier()
-            objc_setAssociatedObject(self, &networkReachabilityHandle, d, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(self, &networkReachabilityHandle, d, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             return d
+        }else{
+            return nil
         }
     }
+    
 }
 
 

@@ -16,8 +16,8 @@ private var UIViewTagIdHandle :UInt8 = 1
 private var UIViewViewPropertyHandle :UInt8 = 2
 private var UIViewConstraintGroupHandle :UInt8 = 3
 private var UIViewWatchHandle :UInt8 = 4
-private var TableViewDataSourceBond :UInt8 = 5
-private var CollectionViewDataSourceBond :UInt8 = 6
+//private var TableViewDataSourceBond :UInt8 = 5
+//private var CollectionViewDataSourceBond :UInt8 = 6
 private var attributedLabelDelegateHandle :UInt8 = 7
 
 
@@ -33,59 +33,54 @@ extension EUScene{
                 return nil
             }
         }set (value){
-            objc_setAssociatedObject(self, &attributedLabelDelegateHandle, value, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(self, &attributedLabelDelegateHandle, value, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
-
-    func loadEZLayout(html:String){
-        self.eu_viewWillLoad()
-        SwiftTryCatch.try({ [unowned self] in
-            var body = EUIParse.ParseHtml(html)
-            var views = [UIView]()
-            for aview in body {
-                views.append(aview.getView())
+    
+    public func eu_viewByTag(tagId:String) ->UIView?{
+        if let subViews = self.eu_subViews {
+            for view in subViews {
+                if view.subviews.count > 0 {
+                    if let aview = view.getSubViewByTagId(tagId){
+                        return aview
+                    }
+                }
+                if view.tagProperty.tagId == tagId {
+                    return view
+                }
             }
-            self.view.clearEZView()
-            for view in views {
+        }
+        return nil
+    }
+
+    func loadEZLayout(){
+        self.view.clearEZView()
+        if let subViews = self.eu_subViews {
+            for view in subViews {
                 self.view.addSubview(view)
             }
             self.view.subRender(self)
-           
-            }, catch: { (error) in
-                println(self.nameOfClass + "Error:\(error.description)")
-            }, finally: nil)
-    }
-    
-    public var eu_tableViewDataSource: UITableViewDataSourceBond<UITableViewCell>? {
-        get{
-            if let d: AnyObject = objc_getAssociatedObject(self, &TableViewDataSourceBond){
-                return d as? UITableViewDataSourceBond<UITableViewCell>
-            }else{
-                return nil
-            }
-        }set (value){
-            objc_setAssociatedObject(self, &TableViewDataSourceBond, value, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
         }
-    }
-    
-    public var eu_collectionViewDataSource: UICollectionViewDataSourceBond<UICollectionViewCell>? {
-        get{
-            if let d: AnyObject = objc_getAssociatedObject(self, &CollectionViewDataSourceBond){
-                return d as? UICollectionViewDataSourceBond<UICollectionViewCell>
-            }else{
-                return nil
-            }
-        }set (value){
-            objc_setAssociatedObject(self, &CollectionViewDataSourceBond, value, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
-        }
+        
+        self.context.setObject(self, forKeyedSubscript: "document")
+        self.eval(self.scriptString)
+        self.eu_viewDidLoad()
     }
 }
 
 extension UIView {
+    public class func formTag(tag:String) -> UIView {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) {
+                return view
+            }
+        }
+        return UIView()
+    }
     
     func clearEZView(){
         for view in self.subviews {
-            var aview = view as! UIView
+            let aview = view 
             aview.clearEZView()
             aview.removeFromSuperview()
         }
@@ -99,7 +94,7 @@ extension UIView {
                 return ViewProperty()
             }
         }set (value){
-            objc_setAssociatedObject(self, &UIViewViewPropertyHandle, value, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(self, &UIViewViewPropertyHandle, value, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 
@@ -111,7 +106,7 @@ extension UIView {
                 }
             }
             if view.tagProperty.tagId == tagId {
-                return view as? UIView
+                return view 
             }
         }
         return nil
@@ -142,7 +137,7 @@ extension UIView {
     
     func subRender(scene:EUScene) {
         for subView in self.subviews {
-            var view = subView as! UIView
+            let view = subView 
             view.renderTheView(scene)
         }
     }
@@ -154,75 +149,78 @@ extension UIView {
         self.renderLayout()
     }
     
-    public func renderDataBinding(bind:EZViewModel?){
+    public func renderDataBinding(scene:EUScene,bind:NSObject?){
         for subView in self.subviews {
-            var view = subView as! UIView
-            view.renderDataBinding(bind)
+            subView.renderDataBinding(scene,bind: bind)
+        }
+        let property =  self.tagProperty as ViewProperty
+        
+        if let bindKey = property.bind["background-color"] {
+            if let color = bind!.valueForKey(bindKey) as? EZColor {
+                color.dym!.bindTo(self.bnd_backgroundColor)
+            }
+        }
+        if let bindKey = property.bind["alpha"] {
+            if let alpha = bind!.valueForKey(bindKey) as? EZFloat {
+                alpha.dym!.bindTo(self.bnd_alpha)
+            }
+        }
+        if let bindKey = property.bind["hidden"] {
+            if let hidden = bind!.valueForKey(bindKey) as? EZBool {
+                hidden.dym!.bindTo(self.bnd_hidden)
+            }
         }
         
-        if let bindKey = self.tagProperty.bind["background-color"] {
-            if let color = bind!.valueForKey(bindKey) as? EZColor {
-                color.dym! ->> self.dynBackgroundColor
+        if let selector = property.onTapBind {
+            self.whenTap(selector.tapNumber){
+                let script = Regex("\\{\\{(\\w+)\\}\\}").replace(selector.selector, withBlock: { (regx) -> String in
+                    let bindKey = regx.subgroupMatchAtIndex(0)?.trim
+                    if let value = bind!.valueForKey(bindKey!) as? String{
+                        return value
+                    }else if let value = bind!.valueForKey(bindKey!) as? Int{
+                        return String(value)
+                    }else if let value = bind!.valueForKey(bindKey!) as? Bool{
+                        return value ? "true" : "false"
+                    }
+                    return ""
+                })
+                scene.eval(script)
             }
         }
-        if let bindKey = self.tagProperty.bind["alpha"] {
-            if let alpha = bind!.valueForKey(bindKey) as? EZFloat {
-                alpha.dym! ->> self.dynAlpha
+        
+        if let selector = property.onSwipeBind {
+            self.whenSwipe(selector.numberOfTouches, direction: selector.direction){
+                let script = Regex("\\{\\{(\\w+)\\}\\}").replace(selector.selector, withBlock: { (regx) -> String in
+                    let bindKey = regx.subgroupMatchAtIndex(0)?.trim
+                    if let value = bind!.valueForKey(bindKey!) as? String{
+                        return value
+                    }else if let value = bind!.valueForKey(bindKey!) as? Int{
+                        return String(value)
+                    }else if let value = bind!.valueForKey(bindKey!) as? Bool{
+                        return value ? "true" : "false"
+                    }
+                    return ""
+                })
+                scene.eval(script)
             }
         }
-        if let bindKey = self.tagProperty.bind["hidden"] {
-            if let hidden = bind!.valueForKey(bindKey) as? EZBool {
-                hidden.dym! ->> self.dynHidden
-            }
-        }
+        
     }
 
     
     func renderGesture(scene:EUScene){
-        var property =  self.tagProperty as ViewProperty
-        
-        if let push = property.pushUrl {
-            TapGestureDynamic<NSInteger>(view: self) *->> Bond<NSInteger>{ value in
-                URLManager.pushURLString(push, animated: true)
-            }
-        }
-        
-        if let present = property.presentUrl {
-            TapGestureDynamic<NSInteger>(view: self) *->> Bond<NSInteger>{ value in
-                var viewController = UIViewController.initFromString(present, fromConfig: URLManager.shareInstance().config)
-                var nav = EZNavigationController(rootViewController: viewController)
-                URLNavigation.presentViewController(nav, animated: true)
-            }
-        }
+        let property =  self.tagProperty as ViewProperty
         
         if let selector = property.onTap {
-            var target:AnyObject!
-            if !isEmpty(selector.target){
-                target = scene.valueForKeyPath(selector.target)
-            }else {
-                target = scene
+            self.whenTap(selector.tapNumber){
+                scene.eval(selector.selector)
             }
-            self.addTapGesture(selector.tapNumber, target: target, action: selector.selector)
         }
         
         if let selector = property.onSwipe {
-            var target:AnyObject!
-            if !isEmpty(selector.target){
-                target = scene.valueForKeyPath(selector.target)
-            }else {
-                target = scene
+            self.whenSwipe(selector.numberOfTouches, direction: selector.direction){
+                scene.eval(selector.selector)
             }
-            self.addSwipeGesture(selector.direction, numberOfTouches: selector.numberOfTouches, target: target, action: selector.selector)
-        }
-        
-        if let selector = property.onPan {
-            var target:AnyObject!
-            if !isEmpty(selector.target){
-                target = scene.valueForKeyPath(selector.target)
-            }else {
-                target = scene
-            }
-            self.addPanGesture(target, action: selector.selector)
         }
         
     }
@@ -248,9 +246,9 @@ extension UIView {
         }
         self.snp_remakeConstraints(){[unowned self] (make) -> Void in
             for cons  in consList {
-                var targetView = self.getViewById(cons.target)
-                var value = cons.value
-                var key = cons.constrainName
+                let targetView = self.getViewById(cons.target)
+                let value = cons.value
+                let key = cons.constrainName
                 if targetView != nil {
                     switch key {
                     case .AlignRight:
@@ -296,27 +294,36 @@ extension UIView {
 }
 
 extension UIImageView {
-    override public func renderDataBinding(bind:EZViewModel?){
-        super.renderDataBinding(bind)
+    override public class func formTag(tag:String) -> UIImageView {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UIImageView {
+                return view
+            }
+        }
+        return UIImageView()
+    }
+    
+    override public func renderDataBinding(scene:EUScene,bind:NSObject?){
+        super.renderDataBinding(scene,bind: bind)
         if let bindKey = self.tagProperty.bind["src"] {
             if let image = bind!.valueForKey(bindKey) as? EZImage {
-                image.dym! ->> self.dynImage
+                image.dym!.bindTo(self.bnd_image)
             }else if let src = bind!.valueForKey(bindKey) as? EZURL {
-                src.dym! ->> self.dynURLImage
+                src.dym!.bindTo(self.bnd_URLImage)
             }else if let image = bind!.valueForKey(bindKey) as? UIImage {
                 self.image = image
             }else if let url = bind!.valueForKey(bindKey) as? NSURL {
                 self.kf_setImageWithURL(url)
             }else if let str = bind!.valueForKey(bindKey) as? String {
-                if let url = NSURL(string: str) {
-                    self.kf_setImageWithURL(url)
-                }else if let image = UIImage(named: str) {
+                if let image = UIImage(named: str) {
                     self.image = image
+                }else if let url = NSURL(string: str) {
+                    self.kf_setImageWithURL(url)
                 }
             }
         }else if let bindKey = self.tagProperty.bind["image"] {
             if let image = bind!.valueForKey(bindKey) as? EZImage {
-                image.dym! ->> self.dynImage
+                image.dym!.bindTo(self.bnd_image)
             }else if let image = bind!.valueForKey(bindKey) as? UIImage {
                 self.image = image
             }
@@ -325,13 +332,22 @@ extension UIImageView {
 }
 
 extension UILabel {
-    override public func renderDataBinding(bind:EZViewModel?){
-        super.renderDataBinding(bind)
+    override public class func formTag(tag:String) -> UILabel {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UILabel {
+                return view
+            }
+        }
+        return UILabel()
+    }
+    
+    override public func renderDataBinding(scene:EUScene,bind:NSObject?){
+        super.renderDataBinding(scene,bind: bind)
         if let bindKey = self.tagProperty.bind["text"] {
             if let text = bind!.valueForKey(bindKey) as? EZAttributedString {
-                text.dym! ->> self.dynAttributedText
+                text.dym!.bindTo(self.bnd_attributedText)
             }else if let text = bind!.valueForKey(bindKey) as? EZString {
-                text.dym! ->> self.dynText
+                text.dym!.bindTo(self.bnd_text)
             }else if let text = bind!.valueForKey(bindKey) as? String {
                 self.text = text
             }else if let data = bind!.valueForKey(bindKey) as? NSData {
@@ -342,7 +358,7 @@ extension UILabel {
         }
         if let bindKey = self.tagProperty.bind["text-color"] {
             if let color = bind!.valueForKey(bindKey) as? EZColor {
-                color.dym! ->> self.dynTextColor
+                color.dym!.bindTo(self.bnd_textColor)
             }else if let color = bind!.valueForKey(bindKey) as? UIColor {
                 self.textColor = color
             }
@@ -351,8 +367,17 @@ extension UILabel {
 }
 
 extension TTTAttributedLabel {
-    override public func renderDataBinding(bind:EZViewModel?){
-        super.renderDataBinding(bind)
+    override public class func formTag(tag:String) -> TTTAttributedLabel {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? TTTAttributedLabel {
+                return view
+            }
+        }
+        return TTTAttributedLabel(frame: CGRectZero)
+    }
+    
+    override public func renderDataBinding(scene:EUScene,bind:NSObject?){
+        super.renderDataBinding(scene,bind: bind)
         if let bindKey = self.tagProperty.bind["TTText"] {
             if let text = bind!.valueForKey(bindKey) as? EZAttributedString {
                 text.dym! ->> self.dynTTTAttributedText
@@ -372,17 +397,26 @@ extension TTTAttributedLabel {
     
     override func renderSelector(scene:EUScene){
         if let delegate = scene.attributedLabelDelegate {
-            self.delegate = scene.attributedLabelDelegate
+            self.delegate = delegate
         }
     }
 }
 
 extension UITextField {
-    override public func renderDataBinding(bind:EZViewModel?){
-        super.renderDataBinding(bind)
+    override public class func formTag(tag:String) -> UITextField {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UITextField {
+                return view
+            }
+        }
+        return UITextField()
+    }
+    
+    override public func renderDataBinding(scene:EUScene,bind:NSObject?){
+        super.renderDataBinding(scene,bind:bind)
         if let bindKey = self.tagProperty.bind["text"] {
             if let text = bind!.valueForKey(bindKey) as? EZString {
-                text.dym! ->> self.dynText
+                text.dym!.bindTo(self.bnd_text)
             }else if let text = bind!.valueForKey(bindKey) as? String {
                 self.text = text
             }
@@ -391,30 +425,42 @@ extension UITextField {
 }
 
 extension UIButton {
-    override func renderSelector(scene:EUScene){
-        var property =  self.tagProperty as? ButtonProperty
-        
-        if let selector = property?.onEvent {
-            var target:AnyObject!
-            if !isEmpty(selector.target){
-                target = scene.valueForKeyPath(selector.target)
-            }else {
-                target = scene
+    override public class func formTag(tag:String) -> UIButton {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UIButton {
+                return view
             }
-            self.addTarget(target, action: selector.selector, forControlEvents: selector.event)
+        }
+        return UIButton()
+    }
+    
+    override func renderSelector(scene:EUScene){
+        let property =  self.tagProperty as? ButtonProperty
+        if let selector = property?.onEvent {
+            self.bnd_controlEvent.filter{$0 == selector.event}.map{ e in}.observe({
+                scene.eval(selector.selector)
+            })
         }
     }
 }
 
 private var UITableViewCellHandle :UInt8 = 5
 extension UITableView {
+    override public class func formTag(tag:String) -> UITableView {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UITableView {
+                return view
+            }
+        }
+        return UITableView()
+    }
     
-    public func getSectionViewByTagId(tagId:String,target:EUScene,bind:EZViewModel? = nil) -> UIView?{
-        var property = self.tagProperty as? TableViewProperty
+    public func getSectionViewByTagId(tagId:String,target:EUScene,bind:NSObject? = nil) -> UIView?{
+        let property = self.tagProperty as? TableViewProperty
         if let pro = property?.sectionView[tagId] {
-            var view = pro.getView()
+            let view = pro.getView()
             view.renderTheView(target)
-            view.renderDataBinding(bind)
+            view.renderDataBinding(target,bind: bind)
             return view
         }
         return nil
@@ -428,32 +474,29 @@ extension UITableView {
                 return  Dictionary<String,UIView>()
             }
         }set (value){
-            objc_setAssociatedObject(self, &UITableViewCellHandle, value, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(self, &UITableViewCellHandle, value, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
     
     override func subRender(scene:EUScene) {
-        let property = self.tagProperty as! TableViewProperty
-        scene.eu_tableViewDataSource = nil
-        scene.eu_tableViewDataSource = UITableViewDataSourceBond(tableView: self)
         scene.eu_tableViewDidLoad(self)
     }
     
-    public func dequeueReusableCell(reuseId:String,target:EUScene,bind:EZViewModel? = nil) -> UITableViewCell{
-        var cell = self.dequeueReusableCellWithIdentifier(reuseId) as! UITableViewCell
+    public func dequeueReusableCell(reuseId:String,forIndexPath:NSIndexPath,target:EUScene,bind:NSObject? = nil) -> UITableViewCell{
+        let cell = self.dequeueReusableCellWithIdentifier(reuseId, forIndexPath: forIndexPath)
         if cell.contentView.subviews.count == 0 {
-            SwiftTryCatch.try({
-                var property = self.tagProperty as! TableViewProperty
+            SwiftTryCatch.`try`({
+                let property = self.tagProperty as! TableViewProperty
                 if let cellProperty = property.reuseCell[reuseId] {
-                var view = cellProperty.getView()
-                cell.contentView.addSubview(view)
-                view.renderTheView(target)
-            }}, catch: { (error) in
-                println(self.nameOfClass + "Error:\(error.description)")
-            }, finally:nil)
+                    let view = cellProperty.getView()
+                    cell.contentView.addSubview(view)
+                    view.renderTheView(target)
+                }}, `catch`: { (error) in
+                    print(self.nameOfClass + "Error:\(error.description)")
+                }, finally:nil)
         }
-        if let view = cell.contentView.subviews.first as? UIView {
-            view.renderDataBinding(bind)
+        if let view = cell.contentView.subviews.first {
+            view.renderDataBinding(target,bind: bind)
         }
         return cell
     }
@@ -461,6 +504,14 @@ extension UITableView {
 
 private var UICollectionViewCellHandle :UInt8 = 5
 extension UICollectionView {
+    override public class func formTag(tag:String) -> UICollectionView {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UICollectionView {
+                return view
+            }
+        }
+        return UICollectionView()
+    }
     
     var reusableViews:Dictionary<String,UIView>{
         get{
@@ -470,73 +521,67 @@ extension UICollectionView {
                 return  Dictionary<String,UIView>()
             }
         }set (value){
-            objc_setAssociatedObject(self, &UICollectionViewCellHandle, value, objc_AssociationPolicy(OBJC_ASSOCIATION_RETAIN_NONATOMIC))
+            objc_setAssociatedObject(self, &UICollectionViewCellHandle, value, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
     
     override func subRender(scene:EUScene) {
-        let property = self.tagProperty as! CollectionViewProperty
-        scene.eu_collectionViewDataSource = nil
-        scene.eu_collectionViewDataSource = UICollectionViewDataSourceBond(collectionView: self)
         scene.eu_collectionViewDidLoad(self)
     }
     
-    public func dequeueReusableCell(reuseId:String,forIndexPath:NSIndexPath,target:EUScene,bind:EZViewModel? = nil) -> UICollectionViewCell{
-        var cell = self.dequeueReusableCellWithReuseIdentifier(reuseId, forIndexPath: forIndexPath) as! UICollectionViewCell
+    public func dequeueReusableCell(reuseId:String,forIndexPath:NSIndexPath,target:EUScene,bind:NSObject? = nil) -> UICollectionViewCell{
+        let cell = self.dequeueReusableCellWithReuseIdentifier(reuseId, forIndexPath: forIndexPath)
         if cell.contentView.subviews.count == 0 {
-            SwiftTryCatch.try({
-                var property = self.tagProperty as! CollectionViewProperty
+            SwiftTryCatch.`try`({
+                let property = self.tagProperty as! CollectionViewProperty
                 if let cellProperty = property.reuseCell[reuseId] {
-                var view = cellProperty.getView()
+                let view = cellProperty.getView()
                 cell.contentView.addSubview(view)
                 view.renderTheView(target)
-            }}, catch: { (error) in
-                println(self.nameOfClass + "Error:\(error.description)")
+            }}, `catch`: { (error) in
+                print(self.nameOfClass + "Error:\(error.description)")
             }, finally: nil)
         }
-        if let view = cell.contentView.subviews.first as? UIView {
-            view.renderDataBinding(bind)
+        if let view = cell.contentView.subviews.first{
+            view.renderDataBinding(target,bind:bind)
         }
         return cell
     }
 }
 
 extension UIScrollView {
+    override public class func formTag(tag:String) -> UIScrollView {
+        if let scene = URLNavigation.currentViewController() as? EUScene {
+            if let view = scene.eu_viewByTag(tag) as? UIScrollView {
+                return view
+            }
+        }
+        return UIScrollView()
+    }
+    
     override func renderSelector(scene:EUScene){
-        var property =  self.tagProperty as? ScrollViewProperty
+        let property =  self.tagProperty as? ScrollViewProperty
         
         if let pullRefresh = property?.pullToRefresh {
-            var target:AnyObject!
-            if !isEmpty(pullRefresh.target){
-                target = scene.valueForKeyPath(pullRefresh.target)
-            }else {
-                target = scene
-            }
-            if isEmpty(pullRefresh.viewClass) {
+            if pullRefresh.viewClass.characters.isEmpty {
                 self.addPullToRefreshWithActionHandler(){
-                    NSThread.detachNewThreadSelector(pullRefresh.selector, toTarget:target, withObject: self)
+                    scene.eval(pullRefresh.selector)
                 }
             }else if let view =  NSObject(fromString: pullRefresh.viewClass) as? UIView {
-                self.addPullToRefreshWithActionHandler(customer:view) {
-                    NSThread.detachNewThreadSelector(pullRefresh.selector, toTarget:target, withObject: self)
+                self.addPullToRefreshWithActionHandler(view) {
+                    scene.eval(pullRefresh.selector)
                 }
             }
         }
         
         if let infiniteScrolling = property?.infiniteScrolling {
-            var target:AnyObject!
-            if !isEmpty(infiniteScrolling.target){
-                target = scene.valueForKeyPath(infiniteScrolling.target)
-            }else {
-                target = scene
-            }
-            if isEmpty(infiniteScrolling.viewClass) {
+            if infiniteScrolling.viewClass.characters.isEmpty {
                 self.addInfiniteScrollingWithActionHandler(){
-                    NSThread.detachNewThreadSelector(infiniteScrolling.selector, toTarget:target, withObject: self)
+                    scene.eval(infiniteScrolling.selector)
                 }
             }else if let view =  NSObject(fromString: infiniteScrolling.viewClass) as? UIView {
-                self.addInfiniteScrollingWithActionHandler(customer:view) {
-                    NSThread.detachNewThreadSelector(infiniteScrolling.selector, toTarget:target, withObject: self)
+                self.addInfiniteScrollingWithActionHandler(view) {
+                   scene.eval(infiniteScrolling.selector)
                 }
             }
         }

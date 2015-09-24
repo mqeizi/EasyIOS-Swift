@@ -11,8 +11,8 @@ import SnapKit
 
 class EUIParse: NSObject {
     class func ParseHtml(html:String) -> [ViewProperty]{
-        var data = ObjectiveGumbo.parseDocumentWithString(html)
-        var body = data.elementsWithTag(GUMBO_TAG_BODY).first as! OGElement
+        let data = ObjectiveGumbo.parseDocumentWithString(html)
+        let body = data.elementsWithTag(GUMBO_TAG_BODY).first as! OGElement
         var viewArray = [ViewProperty]()
         for element in body.children {
             if element.isKindOfClass(OGElement) {
@@ -27,29 +27,47 @@ class EUIParse: NSObject {
     // 对子节点进行递归解析
     class func loopElement(pelement:OGElement) -> ViewProperty?{
         var tagProperty:ViewProperty?
+        var type:String?
         
-        var type = self.string(pelement,key:"type")
-        if type == "UIScrollView" {
-            tagProperty = ScrollViewProperty()
-        }else if type == "UITableView"{
-            tagProperty = TableViewProperty()
-        }else if type == "UICollectionView"{
-            tagProperty = CollectionViewProperty()
-        }else if pelement.tag.value == GUMBO_TAG_IMG.value {
-            tagProperty = ImageProperty()
-        }else if pelement.tag.value == GUMBO_TAG_SPAN.value {
-            tagProperty = LabelProperty()
-        }else if pelement.tag.value == GUMBO_TAG_BUTTON.value {
-            tagProperty = ButtonProperty()
-        }else if pelement.tag.value == GUMBO_TAG_INPUT.value{
-            tagProperty = TextFieldProperty()
-        }else if pelement.tag.value == GUMBO_TAG_DIV.value{
+        switch (pelement.tag.rawValue){
+            case GUMBO_TAG_IMG.rawValue :
+                type = "UIImageView"
+            case GUMBO_TAG_SPAN.rawValue :
+                type = "UILabel"
+            case GUMBO_TAG_BUTTON.rawValue :
+                type = "UIButton"
+            case GUMBO_TAG_INPUT.rawValue :
+                type = "UITextField"
+            default :
+                type = self.string(pelement,key:"type")
+        }
+        
+        if let atype = type {
+            switch (atype){
+            case "UIScrollView","scroll":
+                tagProperty = ScrollViewProperty()
+            case "UITableView","table":
+                tagProperty = TableViewProperty()
+            case "UICollectionView","collection":
+                tagProperty = CollectionViewProperty()
+            case "UIImageView","imageView":
+                tagProperty = ImageProperty()
+            case "UILabel","label":
+                tagProperty = LabelProperty()
+            case "UIButton","button":
+                tagProperty = ButtonProperty()
+            case "UITextField","field":
+                tagProperty = TextFieldProperty()
+            default :
+                tagProperty = ViewProperty()
+            }
+        }else{
             tagProperty = ViewProperty()
         }
+    
         if tagProperty != nil {
             tagProperty!.renderTag(pelement)
         }
-        
         return tagProperty
     }
     
@@ -65,13 +83,13 @@ class EUIParse: NSObject {
             return nil
         }
         var style = Array<Constrain>()
-        var origin = element.attributes?[key] as! String
-        var firstArray = origin.trimArrayBy(";")
+        let origin = element.attributes?[key] as! String
+        let firstArray = origin.trimArrayBy(";")
         
         for str in firstArray {
             var secondArray = str.trimArrayBy(":")
             if secondArray.count == 2 {
-                var raw = secondArray[0] as String
+                let raw = secondArray[0] as String
                 let rawKey = CSS(rawValue: key+"-"+raw.trim)
                 if rawKey == nil {
                     continue
@@ -106,7 +124,7 @@ class EUIParse: NSObject {
                             style.append(Constrain(name:.AlignRight,value: values[3].trim.floatValue))
                         }
                     default :
-                        println(raw.trim + " is jumped")
+                        print(raw.trim + " is jumped")
                     }
 
                 }else if key == "margin" {
@@ -118,7 +136,7 @@ class EUIParse: NSObject {
                             style.append(Constrain(name:rawKey!,value: values[0].trim.floatValue,target:values[1].trim))
                         }
                     default :
-                        println(raw.trim + " is jumped")
+                        print(raw.trim + " is jumped")
                     }
 
                 }

@@ -11,19 +11,29 @@ import Foundation
 
 public func trimToArray (str:String) -> Array<String>{
     return str.trim.componentsSeparatedByCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet()).filter(){
-        return !isEmpty($0)
+        return !$0.characters.isEmpty
     }
 }
 
 public func trimToArrayBy (str:String,by:String) -> Array<String>{
     return str.trim.componentsSeparatedByString(by).filter(){
-        return !isEmpty($0)
+        return !$0.characters.isEmpty
     }
 }
 
+
+
 extension String {
     public subscript (i: Int) -> String {
-        return String(Array(self)[i])
+        return String(Array(self.characters)[i])
+    }
+    
+    public var urlencode :String? {
+        return self.stringByAddingPercentEscapesUsingEncoding(NSUTF8StringEncoding)
+    }
+    
+    public var urldecode :String? {
+        return self.stringByReplacingPercentEscapesUsingEncoding(NSUTF8StringEncoding)
     }
     
     public var trim :String {
@@ -35,11 +45,11 @@ extension String {
     }
     
     public func trimArrayBy (str:String) -> Array<String> {
-        return trimToArrayBy(self,str)
+        return trimToArrayBy(self,by: str)
     }
     
     public var toKeyPath :String {
-        var keyArray = self.trim.componentsSeparatedByString("-")
+        let keyArray = self.trim.componentsSeparatedByString("-")
         var str = ""
         var index = 0
         for akey in keyArray {
@@ -68,8 +78,18 @@ extension String {
         return (self as NSString).boolValue
     }
     
+    
+    public func anyValue(key:String) -> AnyObject{
+        if key == "font" {
+            if let font = UIFont.Font(self.trim) {
+                return font
+            }
+        }
+        return self.anyValue
+    }
+    
     public var anyValue :AnyObject{
-        var str = self.trim
+        let str = self.trim
         
         if str.hasSuffix(".cg"){
             if let color = UIColor(CSS: Regex(".cg").replace(str, withTemplate: "")){
@@ -77,14 +97,12 @@ extension String {
             }
         }
         
-        if contains(["YES","NO","TRUE","FALSE"], str.uppercaseString) {
+        if ["YES","NO","TRUE","FALSE"].contains(str.uppercaseString) {
             return str.boolValue
         }else if let color = UIColor(CSS: str){
             return color
         }else if let image = UIImage(named: str){
             return image
-        }else if let font = UIFont.Font(str){
-            return font
         }else if str.floatValue != 0.0 {
             return str.floatValue
         }else{
@@ -92,8 +110,8 @@ extension String {
         }
     }
     
-    public var MD5 :  String {
-        var data = self.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
+    public var MD5 : String {
+        let data = self.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
         return data!.MD5String
     }
     
