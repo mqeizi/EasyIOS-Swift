@@ -30,6 +30,22 @@ class ViewProperty :NSObject{
     var frame:CGRect?
     var bind = Dictionary<String,String>()
     var contentText:String?
+    var flexEnable = false
+    
+    var flexDirection:FLEXBOXFlexDirection = .Column
+    var flexContentDirection:FLEXBOXContentDirection = .LeftToRight
+    var flexJustifyContent:FLEXBOXJustification = .FlexStart
+    var flexAlignSelf:FLEXBOXAlignment = .Auto
+    var flexAlignItems:FLEXBOXAlignment = .Stretch
+    
+    var flexMargin = UIEdgeInsetsZero
+    var flexPadding = UIEdgeInsetsZero
+    var flexWrap = false
+    var flex:CGFloat = 0.0
+    var flexFixedSize = CGSizeZero
+    var flexMinimumSize = CGSizeZero
+    var flexMaximumSize = CGSizeMake(CGFloat.max, CGFloat.max)
+    
     
     func getView() -> UIView{
         if self.tag == nil {
@@ -39,19 +55,82 @@ class ViewProperty :NSObject{
     }
     
     func view() -> UIView{
-        let view = UIView()
-        view.tagProperty = self
-        self.renderViewStyle(view)
-        for subTag in self.subTags {
-            view.addSubview(subTag.getView())
+        if(flexEnable){
+            let view = FLEXBOXContainerView()
+            view.tagProperty = self
+            self.renderViewStyle(view)
+            for subTag in self.subTags {
+                view.addSubview(subTag.getView())
+            }
+            return view
+        }else{
+            let view = UIView()
+            view.tagProperty = self
+            self.renderViewStyle(view)
+            for subTag in self.subTags {
+                view.addSubview(subTag.getView())
+            }
+            return view
         }
-        return view
     }
     
     func renderTag(pelement:OGElement){
-        self.tagOut += ["id","style","align","margin","type","image-mode","name","width","height","class","ontap","onswipe","ontap-bind","onswipe-bind","frame","reuseid","push","present"]
+        self.tagOut += ["id","style","align","margin","type","image-mode","name","width","height","class","ontap","onswipe","ontap-bind","onswipe-bind","frame","reuseid","push","present","align-self","align-items","justify-content","flex-direction","content-direction","flex-margin","flex-padding","flex-wrap","flex","flex-minimum-size"]
         
         self.tag = pelement.tag
+        
+        if let flexMinimumSize = EUIParse.string(pelement, key: "flex-minimum-size"){
+            self.flexEnable = true
+            self.flexMinimumSize = CGSizeFromString(flexMinimumSize)
+        }
+        
+        if let flexMaximumSize = EUIParse.string(pelement, key: "flex-maximum-size"){
+            self.flexEnable = true
+            self.flexMaximumSize = CGSizeFromString(flexMaximumSize)
+        }
+        
+        if let flexFixedSize = EUIParse.string(pelement, key: "flex-fixed-size"){
+            self.flexEnable = true
+            self.flexFixedSize = CGSizeFromString(flexFixedSize)
+        }
+        
+        if let flexMargin = EUIParse.string(pelement, key: "flex-margin"){
+            self.flexEnable = true
+            self.flexMargin = UIEdgeInsetsFromString(flexMargin)
+        }
+        if let flexPadding = EUIParse.string(pelement, key: "flex-padding"){
+            self.flexEnable = true
+            self.flexPadding = UIEdgeInsetsFromString(flexPadding)
+        }
+        if let flexWrap = EUIParse.string(pelement, key: "flex-wrap"){
+            self.flexEnable = true
+            self.flexWrap = flexWrap.boolValue
+        }
+        if let flex = EUIParse.string(pelement, key: "flex"){
+            self.flexEnable = true
+            self.flex = flex.floatValue
+        }
+        
+        if let alignSelf = EUIParse.string(pelement, key: "align-self"){
+            self.flexEnable = true
+            self.flexAlignSelf = alignSelf.alignItems
+        }
+        if let alignItems = EUIParse.string(pelement, key: "align-items"){
+            self.flexEnable = true
+            self.flexAlignItems = alignItems.alignItems
+        }
+        if let justifyContent = EUIParse.string(pelement, key: "justify-content"){
+            self.flexEnable = true
+            self.flexJustifyContent = justifyContent.justifyContent
+        }
+        if let flexDirection = EUIParse.string(pelement, key: "flex-direction"){
+            self.flexEnable = true
+            self.flexDirection = flexDirection.flexDirection
+        }
+        if let contentDirection = EUIParse.string(pelement, key: "content-direction"){
+            self.flexEnable = true
+            self.flexContentDirection = contentDirection.flexContentDirection
+        }
         
         if let tagId = EUIParse.string(pelement,key:"id") {
             self.tagId = tagId
@@ -112,7 +191,7 @@ class ViewProperty :NSObject{
         }
         
         if let theImageMode = EUIParse.string(pelement,key:"image-mode") {
-            self.imageMode = ViewProperty.imageModeFormat(theImageMode)
+            self.imageMode = theImageMode.viewContentMode
         }
         
         if let theGestureAction = EUIParse.string(pelement, key: "ontap") {
@@ -152,7 +231,6 @@ class ViewProperty :NSObject{
             }
         }
         
-        
         for (key,value) in pelement.attributes {
             if self.tagOut.contains((key as! String)) == false {
                 self.otherProperty[key as! String] = value
@@ -163,6 +241,20 @@ class ViewProperty :NSObject{
     
     func renderViewStyle(view:UIView){
         view.contentMode = self.imageMode;
+        if(self.flexEnable){
+            view.flexDirection = self.flexDirection
+            view.flexContentDirection = self.flexContentDirection
+            view.flexAlignItems = self.flexAlignItems
+            view.flexAlignSelf = self.flexAlignSelf
+            view.flexJustifyContent = self.flexJustifyContent
+            view.flexMargin = self.flexMargin
+            view.flexPadding = self.flexPadding
+            view.flexWrap = self.flexWrap
+            view.flex = self.flex
+            view.flexFixedSize = self.flexFixedSize
+            view.flexMinimumSize = self.flexMinimumSize
+            view.flexMaximumSize = self.flexMaximumSize
+        }
         
         if let frame = self.frame {
             view.frame = frame
@@ -184,48 +276,12 @@ class ViewProperty :NSObject{
     
     func childLoop(pelement:OGElement){
         for element in pelement.children {
-            if element.isKindOfClass(OGElement) {
-                if let pro = EUIParse.loopElement(element as! OGElement) {
-                    self.subTags.append(pro)
-                }
+            if let ele = element as? OGElement,let pro = EUIParse.loopElement(ele) {
+                self.subTags.append(pro)
             }
         }
     }
-    
-    
-    class func imageModeFormat(str:String) -> UIViewContentMode{
-        switch str.trim {
-        case "ScaleToFill":
-            return UIViewContentMode.ScaleToFill
-        case "ScaleAspectFit":
-            return UIViewContentMode.ScaleAspectFit
-        case "ScaleAspectFill":
-            return UIViewContentMode.ScaleAspectFill
-        case "Redraw":
-            return UIViewContentMode.Redraw
-        case "Center":
-            return UIViewContentMode.Center
-        case "Top":
-            return UIViewContentMode.Top
-        case "Bottom":
-            return UIViewContentMode.Bottom
-        case "Left":
-            return UIViewContentMode.Left
-        case "Right":
-            return UIViewContentMode.Right
-        case "TopLeft":
-            return UIViewContentMode.TopLeft
-        case "TopRight":
-            return UIViewContentMode.TopRight
-        case "BottomLeft":
-            return UIViewContentMode.BottomLeft
-        case "BottomRight":
-            return UIViewContentMode.BottomRight
-        default:
-            return UIViewContentMode.ScaleToFill
-        }
-    }
-    
+
     func bindTheKeyPath(str:String,key:String) -> String?{
         let value =  Regex("\\{\\{(\\w+)\\}\\}").replace(str, withBlock: { (regx) -> String in
             let keyPath = regx.subgroupMatchAtIndex(0)?.trim

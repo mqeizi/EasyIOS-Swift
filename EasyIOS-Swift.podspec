@@ -9,10 +9,10 @@
 
 Pod::Spec.new do |s|
   s.name             = "EasyIOS-Swift"
-  s.version          = "2.0"
+  s.version          = "2.0.1"
   s.summary          = "The Swift version of EasyIOS"
   s.description      = <<-DESC
-                      EasyIOS is a new generation of development framework based on `Model-View-ViewModel` ,`HTML To Native`,`Live Load`.
+                      EasyIOS is a new generation of development framework based on `Model-View-ViewModel`,`HTML To Native`,`Live Load`,`FlexBox`.
                        DESC
   s.homepage         = "https://github.com/EasyIOS/EasyIOS-Swift"
   # s.screenshots     = "www.example.com/screenshots_1", "www.example.com/screenshots_2"
@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
   s.author           = { "zhuchao" => "zhuchao@iosx.me" }
   s.source           = { :git => "https://github.com/EasyIOS/EasyIOS-Swift.git", :tag => s.version.to_s }
   #s.source           = { :git => "/Users/zhuchao/Documents/EasyIOS-Swift"}
-  # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
+  s.social_media_url = 'https://twitter.com/zhuchaowe'
 
   s.platform     = :ios, '8.0'
   s.requires_arc = true
@@ -33,8 +33,8 @@ Pod::Spec.new do |s|
     s.dependency 'SnapKit'
     s.dependency 'Kingfisher'
     s.dependency 'ObjectMapper'
-    s.dependency 'TTTAttributedLabel'
     s.dependency 'ReachabilitySwift'
+    s.dependency 'TTTAttributedLabel'
 s.public_header_files = 'Pod/Classes/Easy/**/*.h','Pod/Classes/Extend/**/*.h','Pod/Classes/Private/**/*.h'
 s.frameworks = 'UIKit','JavaScriptCore'
 end

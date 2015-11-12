@@ -9,13 +9,13 @@ EasyIOS For Swift 2.0
 [![Platform](https://img.shields.io/cocoapods/p/EasyIOS-Swift.svg?style=flat)](http://cocoapods.org/pods/EasyIOS-Swift)
 [![qq](http://img.shields.io/badge/QQ%E7%BE%A4-340906744-green.svg)](http://shang.qq.com/wpa/qunwpa?idkey=562d002e275a8199081313b00580fb7111a4faf694216a239064d29f5238bc91)
 
-## Star is the Best Way to Support EasyIOS !
-* [On Github](https://github.com/EasyIOS/EasyIOS-Swift)
-* [On OSChina](http://git.oschina.net/zhuchaowe/EasyIOS-Swift)
 * [中文README](/README/Chinese.md)
 * [IOSX - EasyIOS Official Forum](https://www.iosx.me)
-* [EasyIOS-ObjC](https://github.com/EasyIOS/EasyIOS)
+* [EasyIOS-ObjC](https://github.com/zhuchaowe/EasyIOS)
 * [EasyIOS-Swift-Doc](http://swift.easyios.iosx.me)
+
+QQ群:340906744
+
 
 ## DEMO Video
 [![ScreenShot](http://g3.tdimg.com/0d239f40817111df0dfe941cbc6f9d5e/b0_2.jpg)](http://www.tudou.com/v/aWwPwUhdt5E/&rpid=6059352&resourceId=6059352_04_05_99/v.swf)
@@ -23,7 +23,11 @@ EasyIOS For Swift 2.0
 ## Features
 
 * MVVM : `Model-View-ViewModel` inspired by [Functional Reactive Programming](http://en.wikipedia.org/wiki/Functional_reactive_programming) 
-* HTML To Native : Transform HTML&CSS to Native Control,
+* HTML To Native : Transform HTML&CSS to Native Control.
+* FlexBox Support:It can uses Facebook's [flexbox implementation](https://github.com/facebook/css-layout) ，and work well with AutoLayout。
+
+![flexBox](README/flexbox.png)
+
 * JavaScript and Native Bridge: We can declare the js function in native and call the js function in html
 * DataBinding : We can use the SwiftBond to Bind the data via swift,and use the EZViewModel to Bind the data via html.example `{{title}}`
 * Reflect Cocoa Touch : Reflect all the Cocoa Touch Api ,we can use the Cocoa Touch Api via HTML 
@@ -182,7 +186,7 @@ it, simply add the following line to your Podfile:
 ```ruby
 platform :ios, '8.0'
 use_frameworks!
-pod "EasyIOS-Swift" :git => 'https://github.com/EasyIOS/EasyIOS-Swift'
+pod 'EasyIOS-Swift', '~> 2.0'
 ```
 
 import the EasyIOS

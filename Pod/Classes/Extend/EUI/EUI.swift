@@ -138,7 +138,7 @@ public class EUI: NSObject {
             }
             if let newHtml = Regex("@import\\(([^\\)]*)\\)").replace(finalHtml,withBlock: { (regx) -> String in
                 let subFile = regx.subgroupMatchAtIndex(0)?.trim
-                let subPath = NSBundle.mainBundle().pathForResource(subFile, ofType: suffix)!
+                let subPath = NSBundle(path: BUNDLE_PATH)!.pathForResource(subFile, ofType: suffix)!
                 
                 if NSFileManager.defaultManager().fileExistsAtPath(subPath) {
                     return try! String(contentsOfFile:subPath, encoding: NSUTF8StringEncoding)
@@ -181,12 +181,12 @@ public class EUI: NSObject {
             }
             
             SwiftTryCatch.`try`({
-                let body = EUIParse.ParseHtml(finalHtml)
-                var views = [UIView]()
-                for aview in body {
-                    views.append(aview.getView())
-                }
-                controller.eu_subViews = views
+                    let body = EUIParse.ParseHtml(finalHtml)
+                    var views = [UIView]()
+                    for aview in body {
+                        views.append(aview.getView())
+                    }
+                    controller.eu_subViews = views
                 }, `catch`: { (error) in
                     print(controller.nameOfClass + "Error:\(error.description)")
                 }, finally: nil)

@@ -7,14 +7,13 @@
 //
 
 import Foundation
-import TTTAttributedLabel
 import JavaScriptCore
-
-
+import TTTAttributedLabel
 
 class LabelProperty:ViewProperty{
     var linkStyle = Dictionary<NSObject,AnyObject>()
     var activeLinkStyle = Dictionary<NSObject,AnyObject>()
+    var textAlignment:NSTextAlignment = .Left
     
     override func view() -> UIView{
         if self.style.characters.isEmpty {
@@ -40,15 +39,19 @@ class LabelProperty:ViewProperty{
     
     override func renderTag(pelement: OGElement) {
         
-        self.tagOut += ["link-style","active-link-style"]
+        self.tagOut += ["link-style","active-link-style","text-alignment"]
         super.renderTag(pelement)
         
+        if let textAlignment = EUIParse.string(pelement,key:"text-alignment") {
+            self.textAlignment = textAlignment.textAlignment
+        }
+        
         if let linkStyle = EUIParse.string(pelement,key:"link-style") {
-            self.linkStyle = self.formatLink(linkStyle)
+            self.linkStyle = linkStyle.linkStyleDict
         }
         
         if let linkStyle = EUIParse.string(pelement,key:"active-link-style") {
-            self.activeLinkStyle = self.formatLink(linkStyle)
+            self.activeLinkStyle = linkStyle.linkStyleDict
         }
         
         var html = ""
@@ -70,23 +73,10 @@ class LabelProperty:ViewProperty{
         
     }
     
-    func formatLink(linkStyle:String) -> [NSObject:AnyObject]{
-        let linkArray = linkStyle.trimArrayBy(";")
-        var dict = Dictionary<NSObject,AnyObject>()
-        for str in linkArray {
-            var strArray = str.trimArrayBy(":")
-            if strArray.count == 2 {
-                switch strArray[0] {
-                case "color":
-                    dict[kCTForegroundColorAttributeName] = UIColor(CSS: strArray[1].trim)
-                case "text-decoration":
-                    dict[NSUnderlineStyleAttributeName] = underlineStyleFromString(strArray[1].trim).rawValue
-                default :
-                    dict[NSUnderlineStyleAttributeName] = NSUnderlineStyle.StyleSingle.rawValue
-                }
-            }
-        }
-        return dict
+    override func renderViewStyle(view:UIView){
+        super.renderViewStyle(view)
+        let sview = view as! UILabel
+        sview.textAlignment = self.textAlignment
     }
 
 }

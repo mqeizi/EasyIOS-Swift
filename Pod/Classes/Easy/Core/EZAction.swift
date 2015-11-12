@@ -70,14 +70,13 @@ public class EZAction: NSObject {
             .request(req.method, url, parameters: requestParams, encoding: req.parameterEncoding)
             .validate(statusCode: 200..<300)
             .validate(contentType: req.acceptableContentTypes)
-            .responseString { (_, _, string) in
-                req.responseString = string
-            }.responseJSON { (_, _, json)  in
-                if json.isFailure{
-                    req.error = json.error
+            .responseJSON { response  in
+                 req.response = response
+                if response.result.isFailure{
+                    req.error = response.result.error
                     self.failed(req)
                 }else{
-                    req.output = json.value as! Dictionary<String, AnyObject>
+                    req.output = response.result.value as! Dictionary<String, AnyObject>
                     self.checkCode(req)
                 }
             }
@@ -95,15 +94,13 @@ public class EZAction: NSObject {
                 req.totalBytesWritten = Double(totalBytesWritten)
                 req.totalBytesExpectedToWrite = Double(totalBytesExpectedToWrite)
                 req.progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-            }
-            .responseString { (_, _, string) in
-                req.responseString = string
-            }.responseJSON { (_, _, json) in
-                if json.isFailure{
-                    req.error = json.error
+            }.responseJSON { response in
+                req.response = response
+                if response.result.isFailure{
+                    req.error = response.result.error
                     self.failed(req)
                 }else{
-                    req.output = json.value as! Dictionary<String, AnyObject>
+                    req.output = response.result.value as! Dictionary<String, AnyObject>
                     self.checkCode(req)
                 }
             }
@@ -230,26 +227,29 @@ public class EZAction: NSObject {
     public class var networkReachability: Observable<Reachability.NetworkStatus>? {
         if let d: AnyObject = objc_getAssociatedObject(self, &networkReachabilityHandle) {
             return d as? Observable<Reachability.NetworkStatus>
-        } else if let reachability = Reachability.reachabilityForInternetConnection() {
-            let d = Observable<Reachability.NetworkStatus>(reachability.currentReachabilityStatus)
-            reachability.whenReachable = { reachability in
-                dispatch_async(dispatch_get_main_queue()) {
-                    d.value = reachability.currentReachabilityStatus
+        } else {
+            do {
+                let reachability = try Reachability.reachabilityForInternetConnection()
+                let d = Observable<Reachability.NetworkStatus>(reachability.currentReachabilityStatus)
+                reachability.whenReachable = { reachability in
+                    dispatch_async(dispatch_get_main_queue()) {
+                        d.value = reachability.currentReachabilityStatus
+                    }
                 }
-            }
-            reachability.whenUnreachable = { reachability in
-                dispatch_async(dispatch_get_main_queue()) {
-                    d.value = reachability.currentReachabilityStatus
+                reachability.whenUnreachable = { reachability in
+                    dispatch_async(dispatch_get_main_queue()) {
+                        d.value = reachability.currentReachabilityStatus
+                    }
                 }
+                try reachability.startNotifier()
+                objc_setAssociatedObject(self, &networkReachabilityHandle, d, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                return d
+            } catch {
+                print("Unable to create Reachability")
+                return nil
             }
-            reachability.startNotifier()
-            objc_setAssociatedObject(self, &networkReachabilityHandle, d, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            return d
-        }else{
-            return nil
         }
     }
-    
 }
 
 
